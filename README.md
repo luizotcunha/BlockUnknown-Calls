@@ -28,9 +28,3 @@ Para rodar o projeto, você precisará de:
 - Android Studio Jellyfish ou superior.
 - Dispositivo físico ou Emulador rodando **Android 13+**.
 - Conexão USB para depuração habilitada.
-
-## 🔧 Instalação e Configuração
-
-1. **Clonar o repositório:**
-   ```bash
-   git clone [https://github.com/seu-usuario/block-unknown-calls.git](https://github.com/luizotcunha/block-unknown-calls.git)
