@@ -2,7 +2,9 @@ package com.example.blockunknowncalls
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.ContactsContract
 import android.telecom.Call
@@ -12,14 +14,13 @@ import androidx.core.app.NotificationCompat
 class CallBlockerService : CallScreeningService() {
 
     override fun onScreenCall(callDetails: Call.Details) {
-        val sharedPref = getSharedPreferences("Settings", Context.MODE_PRIVATE)
-        val isEnabled = sharedPref.getBoolean("enabled", true)
-        val shouldBlock = sharedPref.getBoolean("auto_block", true)
-        val whitelist = sharedPref.getStringSet("whitelist", setOf()) ?: setOf()
+        val prefs = BlockerStore.prefs(this)
+        val isEnabled = prefs.getBoolean(BlockerStore.KEY_ENABLED, true)
+        val shouldBlock = prefs.getBoolean(BlockerStore.KEY_AUTO_BLOCK, true)
 
         val phoneNumber = callDetails.handle?.schemeSpecificPart ?: ""
 
-        val inWhitelist = whitelist.any { isSameNumber(it, phoneNumber) }
+        val inWhitelist = BlockerStore.isWhitelisted(prefs, phoneNumber)
 
         // 1. Condições para deixar passar:
         // App desativado, contatos, whitelist OU números importantes (0800, emergência, etc)
@@ -29,7 +30,7 @@ class CallBlockerService : CallScreeningService() {
         }
 
         // 2. Salvar no histórico de bloqueados
-        saveToHistory(phoneNumber)
+        BlockerStore.addToHistory(prefs, phoneNumber)
 
         // 3. Executar Bloqueio ou Silenciamento
         val responseBuilder = CallResponse.Builder()
@@ -61,23 +62,20 @@ class CallBlockerService : CallScreeningService() {
         // Geralmente possuem entre 3 e 5 dígitos.
         if (cleanNumber.length in 3..5) return true
 
-        // 2. Prefixos gratuitos e de custo compartilhado (0800, 0300)
+        // 2. Números gratuitos (0800)
         if (cleanNumber.startsWith("0800")) return true
 
 
         return false
     }
 
-    private fun isSameNumber(num1: String, num2: String): Boolean {
-        val clean1 = num1.replace(Regex("\\D"), "")
-        val clean2 = num2.replace(Regex("\\D"), "")
-        if (clean1.isEmpty() || clean2.isEmpty()) return false
-
-        return clean1.endsWith(clean2) || clean2.endsWith(clean1)
-    }
-
     private fun isNumberInContacts(phoneNumber: String?): Boolean {
         if (phoneNumber.isNullOrBlank()) return false
+
+        // Sem permissão não dá para saber se é contato: na dúvida, não bloqueia.
+        if (checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            return true
+        }
 
         if (checkPhoneLookup(phoneNumber)) return true
 
@@ -95,7 +93,37 @@ class CallBlockerService : CallScreeningService() {
             if (checkPhoneLookup(semDDD)) return true
         }
 
-        return false
+        // Fallback: o PhoneLookup do Android falha com vários formatos brasileiros
+        // (contato salvo sem o 9º dígito, com código de operadora "0 15 11...", sem DDD etc).
+        // Compara os últimos 8 dígitos (número local) com todos os telefones salvos.
+        return matchesAnyContactBySuffix(cleanNumber)
+    }
+
+    private fun matchesAnyContactBySuffix(cleanIncoming: String): Boolean {
+        if (cleanIncoming.length < 8) return false
+        val incomingSuffix = cleanIncoming.takeLast(8)
+
+        return try {
+            val cursor = contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                arrayOf(
+                    ContactsContract.CommonDataKinds.Phone.NUMBER,
+                    ContactsContract.CommonDataKinds.Phone.NORMALIZED_NUMBER
+                ),
+                null, null, null
+            )
+            cursor?.use {
+                while (it.moveToNext()) {
+                    for (col in 0..1) {
+                        val digits = it.getString(col)?.replace(Regex("\\D"), "") ?: continue
+                        if (digits.length >= 8 && digits.takeLast(8) == incomingSuffix) return true
+                    }
+                }
+                false
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
     }
 
     private fun checkPhoneLookup(number: String): Boolean {
@@ -108,13 +136,6 @@ class CallBlockerService : CallScreeningService() {
         }
     }
 
-    private fun saveToHistory(number: String) {
-        val sharedPref = getSharedPreferences("Settings", Context.MODE_PRIVATE)
-        val history = sharedPref.getStringSet("history", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
-        history.add(number)
-        sharedPref.edit().putStringSet("history", history).apply()
-    }
-
     private fun sendNotification(title: String, message: String) {
         val channelId = "blocker_logs"
         val manager = getSystemService(NotificationManager::class.java)
@@ -125,7 +146,7 @@ class CallBlockerService : CallScreeningService() {
         }
 
         val notification = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(android.R.drawable.stat_notify_error)
+            .setSmallIcon(R.drawable.ic_block)
             .setContentTitle(title)
             .setContentText(message)
             .setAutoCancel(true)

@@ -1,3 +1,53 @@
 <resources>
-    <string name="app_name">BlockUnknownCalls</string>
+    <string name="app_name">Filtro de Chamadas</string>
+
+    <string name="title">Filtro de chamadas</string>
+    <string name="subtitle">Só quem está nos seus contatos toca.</string>
+
+    <string name="status_switch_desc">Ativar filtro</string>
+    <string name="status_on">Proteção ativa</string>
+    <string name="status_off">Proteção desligada</string>
+    <string name="status_on_reject">Desconhecidos são recusados</string>
+    <string name="status_on_silence">Desconhecidos tocam em silêncio</string>
+    <string name="status_off_desc">Todas as chamadas passam</string>
+
+    <string name="setup_action">Configurar</string>
+    <string name="setup_role">O app ainda não é o filtro de chamadas do sistema.</string>
+    <string name="setup_contacts">Permita o acesso aos contatos para reconhecer quem você conhece.</string>
+
+    <string name="mode_title">Quando um desconhecido ligar</string>
+    <string name="mode_reject">Recusar</string>
+    <string name="mode_silence">Silenciar</string>
+    <string name="mode_reject_hint">A chamada é encerrada sem tocar.</string>
+    <string name="mode_silence_hint">A chamada chega, mas sem som. Você pode atender.</string>
+
+    <string name="history_title">Bloqueados</string>
+    <string name="history_empty">Nenhuma chamada bloqueada ainda</string>
+    <string name="whitelist_title">Sempre permitidos</string>
+    <string name="whitelist_empty">Números fora da agenda que podem ligar</string>
+    <string name="whitelist_meta">Sempre permitido</string>
+
+    <string name="allow">Permitir</string>
+    <string name="add">Adicionar</string>
+    <string name="clear">Limpar</string>
+    <string name="remove">Remover</string>
+    <string name="undo">Desfazer</string>
+    <string name="cancel">Cancelar</string>
+
+    <string name="private_number">Número privado</string>
+    <string name="old_entry">Registro antigo</string>
+    <string name="number_allowed">%1$s agora pode ligar</string>
+    <string name="number_removed">Número removido</string>
+
+    <string name="clear_history_title">Limpar histórico?</string>
+    <string name="clear_history_msg">A lista de chamadas bloqueadas será apagada.</string>
+    <string name="add_title">Permitir número</string>
+    <string name="add_hint">Telefone com DDD</string>
+
+    <string name="footer">Contatos, números curtos de emergência e 0800 sempre passam.</string>
+
+    <plurals name="calls_count">
+        <item quantity="one">%d chamada</item>
+        <item quantity="other">%d chamadas</item>
+    </plurals>
 </resources>
