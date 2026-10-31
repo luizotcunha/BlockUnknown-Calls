@@ -38,12 +38,12 @@ class CallBlockerService : CallScreeningService() {
             responseBuilder.setDisallowCall(true)
                 .setRejectCall(true)
                 .setSkipNotification(true)
-            sendNotification("Número Bloqueado", "Chamada de $phoneNumber rejeitada.")
+            sendNotification(phoneNumber, "Número bloqueado", "rejeitada")
         } else {
             responseBuilder.setDisallowCall(false)
                 .setSkipNotification(true)
                 .setSilenceCall(true)
-            sendNotification("Chamada Silenciada", "Número $phoneNumber em silêncio.")
+            sendNotification(phoneNumber, "Chamada silenciada", "silenciada")
         }
 
         respondToCall(callDetails, responseBuilder.build())
@@ -136,7 +136,16 @@ class CallBlockerService : CallScreeningService() {
         }
     }
 
-    private fun sendNotification(title: String, message: String) {
+    /**
+     * Uma notificação por número: novas chamadas do mesmo número atualizam a
+     * notificação existente com o total, em vez de criar outra.
+     */
+    private fun sendNotification(phoneNumber: String, title: String, action: String) {
+        val prefs = BlockerStore.prefs(this)
+        val count = BlockerStore.blockedCount(prefs, phoneNumber)
+        val shown = phoneNumber.ifBlank { "Número privado" }
+        val message = if (count > 1) "$shown · $count chamadas $action" + "s" else "Chamada de $shown $action"
+
         val channelId = "blocker_logs"
         val manager = getSystemService(NotificationManager::class.java)
 
@@ -150,8 +159,11 @@ class CallBlockerService : CallScreeningService() {
             .setContentTitle(title)
             .setContentText(message)
             .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .setGroup("blocked_calls")
             .build()
 
-        manager.notify(System.currentTimeMillis().toInt(), notification)
+        val key = BlockerStore.numberKey(phoneNumber).ifEmpty { "private" }
+        manager.notify("blocked:$key", 0, notification)
     }
 }

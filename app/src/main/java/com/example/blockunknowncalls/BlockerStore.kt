@@ -38,7 +38,7 @@ object BlockerStore {
 
     fun removeFromHistory(prefs: SharedPreferences, number: String) {
         val set = prefs.getStringSet(KEY_HISTORY, emptySet()).orEmpty()
-            .filterNot { parse(it).number == number }.toSet()
+            .filterNot { numberKey(parse(it).number) == numberKey(number) }.toSet()
         prefs.edit().putStringSet(KEY_HISTORY, set).apply()
     }
 
@@ -67,6 +67,7 @@ object BlockerStore {
 
     fun addToWhitelist(prefs: SharedPreferences, number: String) {
         val set = whitelist(prefs).toMutableSet()
+        if (set.any { sameNumber(it, number) }) return
         set.add(number)
         prefs.edit().putStringSet(KEY_WHITELIST, set).apply()
     }
@@ -81,6 +82,21 @@ object BlockerStore {
         whitelist(prefs).any { sameNumber(it, number) }
 
     // ---------- Comparação de números ----------
+
+    /**
+     * Chave usada para agrupar o mesmo número escrito de formas diferentes
+     * (+55 11 98765-4321, 011987654321, 98765-4321...). Número privado vira "".
+     */
+    fun numberKey(number: String): String {
+        val digits = number.filter(Char::isDigit)
+        return if (digits.length >= 8) digits.takeLast(8) else digits
+    }
+
+    /** Quantas vezes o número já foi bloqueado (considerando formatos diferentes). */
+    fun blockedCount(prefs: SharedPreferences, number: String): Int {
+        val key = numberKey(number)
+        return history(prefs).count { numberKey(it.number) == key }
+    }
 
     /**
      * Compara pelos últimos 8 dígitos (número local brasileiro), ignorando

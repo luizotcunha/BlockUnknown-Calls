@@ -187,8 +187,12 @@ class MainActivity : AppCompatActivity() {
         layoutHistory.removeAllViews()
 
         val grouped = BlockerStore.history(prefs)
-            .groupBy { it.number }
-            .map { (number, entries) -> Triple(number, entries.size, entries.maxOf { it.time }) }
+            .groupBy { BlockerStore.numberKey(it.number) }
+            .map { (_, entries) ->
+                // Exibe o formato mais completo (com DDI/DDD) entre as variações do mesmo número
+                val number = entries.maxBy { it.number.count(Char::isDigit) }.number
+                Triple(number, entries.size, entries.maxOf { it.time })
+            }
             .sortedByDescending { it.third }
 
         txtHistoryCount.text = if (grouped.isEmpty()) "" else grouped.size.toString()
